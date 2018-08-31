@@ -25,6 +25,8 @@ import org.apache.bcel.generic.ObjectType;
 import org.apache.bcel.generic.RET;
 import org.apache.bcel.generic.Type;
 import org.apache.bcel.verifier.VerificationResult;
+import org.checkerframework.checker.determinism.qual.Det;
+import org.checkerframework.checker.determinism.qual.PolyDet;
 import org.checkerframework.checker.index.qual.IndexOrLow;
 import org.checkerframework.checker.index.qual.NonNegative;
 import org.checkerframework.checker.interning.qual.InternedDistinct;
@@ -119,7 +121,7 @@ public abstract class StackMapUtils {
    * @return the new string array
    */
   protected String[] add_string(String[] arr, String new_string) {
-    String[] new_arr = new String[arr.length + 1];
+    @PolyDet String @PolyDet [] new_arr = new @PolyDet String @PolyDet [arr.length + 1];
     for (int ii = 0; ii < arr.length; ii++) {
       new_arr[ii] = arr[ii];
     }
@@ -401,7 +403,8 @@ public abstract class StackMapUtils {
         // number to append is frame_type - 251
         types_of_active_locals =
             Arrays.copyOf(types_of_active_locals, number_active_locals + frame_type - 251);
-        for (StackMapType smt : smte.getTypesOfLocals()) {
+        // For some reason, the below does not default to @PolyDet.
+        for (@Det StackMapType smt : smte.getTypesOfLocals()) {
           types_of_active_locals[number_active_locals++] = smt;
           locals_offset_height += getSize(smt);
         }
@@ -416,7 +419,7 @@ public abstract class StackMapUtils {
         locals_offset_height = 0;
         number_active_locals = 0;
         types_of_active_locals = new StackMapType[smte.getNumberOfLocals()];
-        for (StackMapType smt : smte.getTypesOfLocals()) {
+        for (@Det StackMapType smt : smte.getTypesOfLocals()) {
           types_of_active_locals[number_active_locals++] = smt;
           locals_offset_height += getSize(smt);
         }
@@ -520,7 +523,7 @@ public abstract class StackMapUtils {
    *
    * @param il instruction list to search
    */
-  protected final void build_unitialized_NEW_map(InstructionList il) {
+  protected final void build_unitialized_NEW_map(@Det InstructionList il) {
 
     uninitialized_NEW_map.clear();
     il.setPositions();
@@ -534,7 +537,7 @@ public abstract class StackMapUtils {
           || (frame_type == Const.FULL_FRAME)) {
 
         if (smte.getNumberOfLocals() > 0) {
-          for (StackMapType smt : smte.getTypesOfLocals()) {
+          for (@Det StackMapType smt : smte.getTypesOfLocals()) {
             if (smt.getType() == Const.ITEM_NewObject) {
               int i = smt.getIndex();
               uninitialized_NEW_map.put(il.findHandle(i), i);
@@ -542,7 +545,7 @@ public abstract class StackMapUtils {
           }
         }
         if (smte.getNumberOfStackItems() > 0) {
-          for (StackMapType smt : smte.getTypesOfStackItems()) {
+          for (@Det StackMapType smt : smte.getTypesOfStackItems()) {
             if (smt.getType() == Const.ITEM_NewObject) {
               int i = smt.getIndex();
               uninitialized_NEW_map.put(il.findHandle(i), i);
@@ -666,6 +669,7 @@ public abstract class StackMapUtils {
    *     Java 1.7 (= classfile version 51)
    */
   @EnsuresNonNull({"stack_map_table"})
+  @SuppressWarnings("determinism") // smta field is set to a @PolyDet value
   protected final void fetch_current_stack_map_table(MethodGen mgen, int java_class_version) {
 
     smta = (StackMap) get_stack_map_table_attribute(mgen);
@@ -835,7 +839,8 @@ public abstract class StackMapUtils {
       if (stack_map_table[i].getFrameType() == Const.FULL_FRAME) {
 
         int num_locals = stack_map_table[i].getNumberOfLocals();
-        StackMapType[] new_local_types = new StackMapType[num_locals + 1];
+        @PolyDet StackMapType @PolyDet [] new_local_types =
+            new @PolyDet StackMapType @PolyDet [num_locals + 1];
         StackMapType[] old_local_types = stack_map_table[i].getTypesOfLocals();
 
         // System.out.printf ("update_full_frame %s %s %s %n", offset, num_locals, locals.length);
@@ -889,8 +894,8 @@ public abstract class StackMapUtils {
 
     LocalVariableGen arg_new = null;
     // get a copy of the locals before modification
-    LocalVariableGen[] locals = mgen.getLocalVariables();
-    Type[] arg_types = mgen.getArgumentTypes();
+    @PolyDet LocalVariableGen @PolyDet [] locals = mgen.getLocalVariables();
+    @PolyDet Type @PolyDet [] arg_types = mgen.getArgumentTypes();
     int new_index = 0;
     int new_offset = 0;
 
@@ -921,7 +926,7 @@ public abstract class StackMapUtils {
 
     // Update the method's argument information.
     arg_types = BcelUtil.postpendToArray(arg_types, arg_type);
-    String[] arg_names = add_string(mgen.getArgumentNames(), arg_name);
+    @PolyDet String @PolyDet [] arg_names = add_string(mgen.getArgumentNames(), arg_name);
     mgen.setArgumentTypes(arg_types);
     mgen.setArgumentNames(arg_names);
 
@@ -989,7 +994,7 @@ public abstract class StackMapUtils {
     int max_offset = 0;
     int new_offset = -1;
     // get a copy of the local before modification
-    LocalVariableGen[] locals = mgen.getLocalVariables();
+    @PolyDet LocalVariableGen @PolyDet [] locals = mgen.getLocalVariables();
     @IndexOrLow("locals") int compiler_temp_i = -1;
     int new_index = -1;
     int i;
@@ -1094,6 +1099,7 @@ public abstract class StackMapUtils {
    *
    * @param mgen MethodGen to be modified
    */
+  @SuppressWarnings("determinism") // modifying @Det field initial_type_list with @PolyDet value
   protected final void fix_local_variable_table(MethodGen mgen) {
     InstructionList il = mgen.getInstructionList();
     if (il == null) {
@@ -1103,7 +1109,7 @@ public abstract class StackMapUtils {
     }
 
     // Get the current local variables (includes 'this' and parameters)
-    LocalVariableGen[] locals = mgen.getLocalVariables();
+    @PolyDet LocalVariableGen @PolyDet [] locals = mgen.getLocalVariables();
     LocalVariableGen l;
     LocalVariableGen new_lvg;
 
@@ -1113,7 +1119,7 @@ public abstract class StackMapUtils {
     }
 
     // The arg types are correct and include all parameters.
-    Type[] arg_types = mgen.getArgumentTypes();
+    @PolyDet Type @PolyDet [] arg_types = mgen.getArgumentTypes();
 
     // Initial offset into the stack frame
     int offset = 0;
@@ -1172,7 +1178,7 @@ public abstract class StackMapUtils {
     //   the arguments to the method
     // This will be used to construct the initial state of the
     // StackMapTypes.
-    LocalVariableGen[] initial_locals = mgen.getLocalVariables();
+    @PolyDet LocalVariableGen @PolyDet [] initial_locals = mgen.getLocalVariables();
     initial_locals_count = initial_locals.length;
     initial_type_list = new StackMapType[initial_locals_count];
     for (int ii = 0; ii < initial_locals_count; ii++) {

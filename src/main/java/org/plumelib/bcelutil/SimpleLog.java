@@ -2,6 +2,7 @@ package org.plumelib.bcelutil;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.checkerframework.checker.determinism.qual.Det;
 import org.checkerframework.checker.formatter.qual.FormatMethod;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -42,7 +43,7 @@ public final class SimpleLog {
    *
    * @param enabled whether the logger starts out enabled
    */
-  public SimpleLog(boolean enabled) {
+  public SimpleLog(@Det boolean enabled) {
     this.enabled = enabled;
     indentStrings = new ArrayList<String>();
     indentStrings.add("");

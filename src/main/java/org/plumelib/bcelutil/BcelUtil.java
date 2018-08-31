@@ -28,6 +28,7 @@ import org.apache.bcel.generic.MethodGen;
 import org.apache.bcel.generic.ObjectType;
 import org.apache.bcel.generic.RETURN;
 import org.apache.bcel.generic.Type;
+import org.checkerframework.checker.determinism.qual.*;
 import org.checkerframework.checker.index.qual.SameLen;
 import org.checkerframework.checker.signature.qual.BinaryName;
 import org.checkerframework.checker.signature.qual.ClassGetName;
@@ -272,7 +273,7 @@ public final class BcelUtil {
       if (ilist == null || ilist.getStart() == null) {
         return;
       }
-      CodeExceptionGen[] exceptionHandlers = mgen.getExceptionHandlers();
+      @PolyDet CodeExceptionGen @PolyDet [] exceptionHandlers = mgen.getExceptionHandlers();
       for (CodeExceptionGen gen : exceptionHandlers) {
         assert ilist.contains(gen.getStartPC())
             : "exception handler "
@@ -304,7 +305,7 @@ public final class BcelUtil {
       return;
     }
 
-    Method[] methods = gen.getMethods();
+    @PolyDet Method @PolyDet [] methods = gen.getMethods();
     for (int i = 0; i < methods.length; i++) {
       Method method = methods[i];
       // System.out.println ("Checking method " + method + " in class "
@@ -386,6 +387,9 @@ public final class BcelUtil {
    * @param jc JavaClass to dump
    * @param dumpDir directory in which to write the file
    */
+  @SuppressWarnings("determinism") // there's an error for the last call to printf in this method,
+  // probably an instance of https://github.com/t-rasmud/checker-framework/issues/24, as there are
+  // two parameters being passed
   public static void dump(JavaClass jc, File dumpDir) {
 
     try {
@@ -395,7 +399,7 @@ public final class BcelUtil {
 
       // Print the class, superclass, and interfaces
       p.printf("class %s extends %s%n", jc.getClassName(), jc.getSuperclassName());
-      String[] inames = jc.getInterfaceNames();
+      @PolyDet String @PolyDet [] inames = jc.getInterfaceNames();
       if ((inames != null) && (inames.length > 0)) {
         p.printf("   ");
         for (String iname : inames) {
@@ -430,7 +434,7 @@ public final class BcelUtil {
       // Print the details of the constant pool.
       p.printf("Constant Pool:%n");
       ConstantPool cp = jc.getConstantPool();
-      Constant[] constants = cp.getConstantPool();
+      @PolyDet Constant @PolyDet [] constants = cp.getConstantPool();
       for (int ii = 0; ii < constants.length; ii++) {
         p.printf("  %d %s%n", ii, constants[ii]);
       }
@@ -471,7 +475,7 @@ public final class BcelUtil {
 
     StringBuilder out = new StringBuilder();
     out.append(String.format("Locals for %s [cnt %d]%n", mg, mg.getMaxLocals()));
-    LocalVariableGen[] lvgs = mg.getLocalVariables();
+    @PolyDet LocalVariableGen @PolyDet [] lvgs = mg.getLocalVariables();
     if ((lvgs != null) && (lvgs.length > 0)) {
       for (LocalVariableGen lvg : lvgs) {
         out.append(String.format("  %s [index %d]%n", lvg, lvg.getIndex()));
@@ -501,6 +505,7 @@ public final class BcelUtil {
    *
    * @param mg the method whose locals to set
    */
+  @SuppressWarnings("determinism") // issue with String literals being flagged in annotations
   public static void setupInitLocals(MethodGen mg) {
 
     // Get the parameter types and names.
@@ -508,13 +513,16 @@ public final class BcelUtil {
         "nullness" // The arguments to the annotation aren't necessarily initialized before they
     // are written here. Since annotations are erased at runtime, this is safe.
     )
-    Type @SameLen({"argTypes", "mg.getArgumentTypes()"}) [] argTypes = mg.getArgumentTypes();
+    @PolyDet Type @SameLen({"argTypes", "mg.getArgumentTypes()"}) @PolyDet [] argTypes =
+        mg.getArgumentTypes();
     @SuppressWarnings(
         "nullness" // The arguments to the annotation aren't necessarily initialized before they
     // are written here. Since annotations are erased at runtime, this is safe.
     )
-    String @SameLen({"argTypes", "argNames", "mg.getArgumentTypes()", "mg.getArgumentNames()"}) []
-        argNames = mg.getArgumentNames();
+    // TODO: how to do line breaks and indentation here?
+    @PolyDet String
+        @SameLen({"argTypes", "argNames", "mg.getArgumentTypes()", "mg.getArgumentNames()"})
+        @PolyDet [] argNames = mg.getArgumentNames();
 
     // Remove any existing locals
     mg.setMaxLocals(0);
@@ -602,7 +610,7 @@ public final class BcelUtil {
    * @return true iff the method is a main method
    */
   public static boolean isMain(MethodGen mg) {
-    Type[] argTypes = mg.getArgumentTypes();
+    @PolyDet Type @PolyDet [] argTypes = mg.getArgumentTypes();
     return (mg.isStatic()
         && mg.getName().equals("main")
         && (argTypes.length == 1)
@@ -645,11 +653,11 @@ public final class BcelUtil {
    * @param newType the element to add to the end of the array
    * @return a new array, with newType at the end
    */
-  public static Type[] postpendToArray(Type[] types, Type newType) {
-    Type[] newTypes = new Type[types.length + 1];
+  public static Type[] postpendToArray(@PolyDet Type @PolyDet [] types, Type newType) {
+    @PolyDet Type @PolyDet [] newTypes = new @PolyDet Type @PolyDet [types.length + 1];
     System.arraycopy(types, 0, newTypes, 0, types.length);
     newTypes[types.length] = newType;
-    Type[] newTypesCast = newTypes;
+    @PolyDet Type @PolyDet [] newTypesCast = newTypes;
     return (newTypesCast);
   }
 
@@ -660,6 +668,7 @@ public final class BcelUtil {
    * @param newType the element to add to the beginning of the array
    * @return a new array, with newType at the beginning
    */
+  @SuppressWarnings("determinism") // issue with int literals being flagged in annotations
   public static Type[] prependToArray(Type newType, Type[] types) {
     @SuppressWarnings({
       "index", // newTypes is @MinLen(1) except in the presence of overflow,
@@ -667,10 +676,10 @@ public final class BcelUtil {
       "value" // newTypes is @MinLen(1) except in the presence of overflow,
       // which the Value Checker accounts for, but the Index Checker does not.
     })
-    Type @MinLen(1) [] newTypes = new Type[types.length + 1];
+    @PolyDet Type @MinLen(1) @PolyDet [] newTypes = new @PolyDet Type @PolyDet [types.length + 1];
     System.arraycopy(types, 0, newTypes, 1, types.length);
     newTypes[0] = newType;
-    Type[] newTypesCast = newTypes;
+    @PolyDet Type @PolyDet [] newTypesCast = newTypes;
     return (newTypesCast);
   }
 

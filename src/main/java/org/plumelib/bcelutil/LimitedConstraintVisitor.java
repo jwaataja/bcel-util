@@ -67,6 +67,7 @@ import org.apache.bcel.verifier.structurals.Frame;
 import org.apache.bcel.verifier.structurals.InstConstraintVisitor;
 import org.apache.bcel.verifier.structurals.LocalVariables;
 import org.apache.bcel.verifier.structurals.OperandStack;
+import org.checkerframework.checker.determinism.qual.Det;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.RequiresNonNull;
 
@@ -150,6 +151,8 @@ public class LimitedConstraintVisitor extends InstConstraintVisitor {
    * @see #setMethodGen(MethodGen mg)
    */
   @Override
+  @SuppressWarnings("determinism") // The f parameter should be @Det, but it's @PolyDet here to be
+  // able to override the method in the apache library.
   public void setFrame(Frame f) {
     this.frame = f;
     // if (singleInstance.mg == null || singleInstance.cpg == null) throw new

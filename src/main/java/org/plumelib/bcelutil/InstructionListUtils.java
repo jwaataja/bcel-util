@@ -18,6 +18,8 @@ import org.apache.bcel.generic.LocalVariableGen;
 import org.apache.bcel.generic.MethodGen;
 import org.apache.bcel.generic.TABLESWITCH;
 import org.apache.bcel.verifier.structurals.OperandStack;
+import org.checkerframework.checker.determinism.qual.Det;
+import org.checkerframework.checker.determinism.qual.PolyDet;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
@@ -38,7 +40,7 @@ public abstract class InstructionListUtils extends StackMapUtils {
    * @param il InstructionList to be modified
    * @param inst Instruction to be appended
    */
-  protected final void append_inst(InstructionList il, Instruction inst) {
+  protected final void append_inst(InstructionList il, @PolyDet("use") Instruction inst) {
 
     // System.out.println ("append_inst: " + inst.getClass().getName());
     if (inst instanceof LOOKUPSWITCH) {
@@ -61,7 +63,8 @@ public abstract class InstructionListUtils extends StackMapUtils {
    * @param mg MethodGen of method to be modified
    * @param new_il InstructionList holding the new code
    */
-  protected final void insert_at_method_start(MethodGen mg, InstructionList new_il) {
+  protected final void insert_at_method_start(
+      MethodGen mg, @PolyDet("use") InstructionList new_il) {
 
     // Ignore methods with no instructions
     InstructionList il = mg.getInstructionList();
@@ -81,9 +84,9 @@ public abstract class InstructionListUtils extends StackMapUtils {
    */
   protected final void insert_before_handle(
       MethodGen mg,
-      InstructionHandle ih,
-      @Nullable InstructionList new_il,
-      boolean redirect_branches) {
+      @PolyDet("use") InstructionHandle ih,
+      @Nullable @PolyDet("use") InstructionList new_il,
+      @PolyDet("use") boolean redirect_branches) {
 
     if (new_il == null) return;
 
@@ -200,7 +203,9 @@ public abstract class InstructionListUtils extends StackMapUtils {
    * @param end_ih InstructionHandle indicating last instruction to be deleted
    */
   protected final void delete_instructions(
-      MethodGen mg, InstructionHandle start_ih, InstructionHandle end_ih) {
+      MethodGen mg,
+      @PolyDet("use") InstructionHandle start_ih,
+      @PolyDet("use") InstructionHandle end_ih) {
     InstructionList il = mg.getInstructionList();
     InstructionHandle new_start = end_ih.getNext();
     if (new_start == null) {
@@ -261,7 +266,8 @@ public abstract class InstructionListUtils extends StackMapUtils {
    */
   protected final StackMapType[] calculate_live_local_types(MethodGen mg, int location) {
     int max_local_index = -1;
-    StackMapType[] local_map_types = new StackMapType[mg.getMaxLocals()];
+    @PolyDet StackMapType @PolyDet [] local_map_types =
+        new @PolyDet StackMapType @PolyDet [mg.getMaxLocals()];
     Arrays.fill(local_map_types, new StackMapType(Const.ITEM_Bogus, -1, pool.getConstantPool()));
     for (LocalVariableGen lv : mg.getLocalVariables()) {
       if (location >= lv.getStart().getPosition()) {
@@ -284,7 +290,7 @@ public abstract class InstructionListUtils extends StackMapUtils {
    */
   protected final StackMapType[] calculate_live_stack_types(OperandStack stack) {
     int ss = stack.size();
-    StackMapType[] stack_map_types = new StackMapType[ss];
+    @PolyDet StackMapType @PolyDet [] stack_map_types = new @PolyDet StackMapType @PolyDet [ss];
     for (int ii = 0; ii < ss; ii++) {
       stack_map_types[ii] = generate_StackMapType_from_Type(stack.peek(ss - ii - 1));
     }
@@ -301,7 +307,11 @@ public abstract class InstructionListUtils extends StackMapUtils {
    * @param new_il InstructionList holding the new code
    */
   protected final void replace_instructions(
-      MethodGen mg, InstructionList il, InstructionHandle ih, @Nullable InstructionList new_il) {
+      @Det InstructionListUtils this,
+      @Det MethodGen mg,
+      @Det InstructionList il,
+      @Det InstructionHandle ih,
+      @Nullable @Det InstructionList new_il) {
 
     if (new_il == null) return;
 
@@ -401,7 +411,7 @@ public abstract class InstructionListUtils extends StackMapUtils {
         // This situation is caused by a call to "instrument_object_call".
         InstructionHandle nih = new_start;
         int target_count = 0;
-        int target_offsets[] = new int[2]; // see note below for why '2'
+        @Det int target_offsets @Det [] = new @Det int @Det [2]; // see note below for why '2'
 
         // Any targeters on the first instruction will be from 'outside'
         // the new il so we start with the second instruction. (We already
@@ -430,7 +440,8 @@ public abstract class InstructionListUtils extends StackMapUtils {
           // written to allow more.
           int cur_loc = new_start.getPosition();
           int orig_size = stack_map_table.length;
-          StackMapEntry[] new_stack_map_table = new StackMapEntry[orig_size + target_count];
+          @Det StackMapEntry @Det [] new_stack_map_table =
+              new @Det StackMapEntry @Det [orig_size + target_count];
 
           // Calculate the operand stack value(s) for revised code.
           mg.setMaxStack();
@@ -477,7 +488,7 @@ public abstract class InstructionListUtils extends StackMapUtils {
           // that it plans to identify in a subsequent StackMap APPEND entry.
 
           // First, lets calculate the number and types of the live locals.
-          StackMapType[] local_map_types = calculate_live_local_types(mg, cur_loc);
+          @Det StackMapType @Det [] local_map_types = calculate_live_local_types(mg, cur_loc);
           int local_map_index = local_map_types.length;
 
           // local_map_index now contains the number of live locals.
@@ -499,7 +510,8 @@ public abstract class InstructionListUtils extends StackMapUtils {
             if (number_extra_locals == 0 && stack.size() == 1 && !need_full_maps) {
               // the simple case
               StackMapType stack_map_type0 = generate_StackMapType_from_Type(stack.peek(0));
-              StackMapType[] stack_map_types0 = {stack_map_type0};
+              @Det StackMapType @Det [] stack_map_types0 =
+                  new @Det StackMapType @Det [] {stack_map_type0};
               new_stack_map_table[new_index + i] =
                   new StackMapEntry(
                       Const.SAME_LOCALS_1_STACK_ITEM_FRAME,

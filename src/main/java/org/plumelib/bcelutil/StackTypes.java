@@ -7,6 +7,7 @@ import org.apache.bcel.verifier.structurals.Frame;
 import org.apache.bcel.verifier.structurals.LocalVariables;
 import org.apache.bcel.verifier.structurals.OperandStack;
 import org.apache.bcel.verifier.structurals.UninitializedObjectType;
+import org.checkerframework.checker.determinism.qual.Det;
 import org.checkerframework.checker.index.qual.IndexFor;
 import org.checkerframework.checker.index.qual.SameLen;
 import org.checkerframework.checker.lock.qual.GuardSatisfied;
@@ -43,7 +44,7 @@ public final class StackTypes {
    * @param offset the offset at which the instruction appears
    * @param f the stack frame to use for the instruction
    */
-  public void set(@IndexFor({"loc_arr", "os_arr"}) int offset, Frame f) {
+  public void set(@IndexFor({"loc_arr", "os_arr"}) @Det int offset, @Det Frame f) {
 
     OperandStack os = f.getStack();
     // logger.info ("stack[" + offset + "] = " + toString(os));

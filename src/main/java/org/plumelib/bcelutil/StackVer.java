@@ -46,6 +46,9 @@ import org.apache.bcel.verifier.structurals.InstructionContext;
 import org.apache.bcel.verifier.structurals.LocalVariables;
 import org.apache.bcel.verifier.structurals.OperandStack;
 import org.apache.bcel.verifier.structurals.UninitializedObjectType;
+import org.checkerframework.checker.determinism.qual.Det;
+import org.checkerframework.checker.determinism.qual.NonDet;
+import org.checkerframework.checker.determinism.qual.PolyDet;
 import org.checkerframework.checker.index.qual.NonNegative;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -90,7 +93,7 @@ public final class StackVer {
      * @param executionChain the ExecutionChain
      */
     public void add(
-        final InstructionContext ic, final ArrayList<InstructionContext> executionChain) {
+        @Det final InstructionContext ic, final @Det ArrayList<InstructionContext> executionChain) {
       ics.add(ic);
       ecs.add(executionChain);
     }
@@ -108,7 +111,7 @@ public final class StackVer {
      *
      * @param i the index of the items to be removed
      */
-    public void remove(@NonNegative final int i) {
+    public void remove(@NonNegative @Det final int i) {
       ics.remove(i);
       ecs.remove(i);
     }
@@ -175,14 +178,18 @@ public final class StackVer {
    * put [back] into the queue [as if they were unvisited]. The proof of termination is about the
    * existence of a fix point of frame merging.
    */
+  @SuppressWarnings("determinism") // This applies to several lines in this method, but in all cases
+  // this is the issue of passing a @NonDet parameter to a @NonDet receiver but when @Det is
+  // required for known reasons.
   private void circulationPump(
-      final ControlFlowGraph cfg,
-      final InstructionContext start,
-      final Frame vanillaFrame,
-      final InstConstraintVisitor icv,
-      final ExecutionVisitor ev) {
+      @NonDet StackVer this,
+      final @NonDet ControlFlowGraph cfg,
+      final @NonDet InstructionContext start,
+      final @NonDet Frame vanillaFrame,
+      final @NonDet InstConstraintVisitor icv,
+      final @NonDet ExecutionVisitor ev) {
     final Random random = new Random();
-    final InstructionContextQueue icq = new InstructionContextQueue();
+    final @NonDet InstructionContextQueue icq = new InstructionContextQueue();
 
     stack_types.set(start.getInstruction().getPosition(), vanillaFrame);
     // new ArrayList() <=>	no Instruction was executed before
@@ -208,7 +215,8 @@ public final class StackVer {
       @SuppressWarnings("unchecked") // ec is of type ArrayList<InstructionContext>
       final ArrayList<InstructionContext> oldchain = (ArrayList<InstructionContext>) (ec.clone());
       @SuppressWarnings("unchecked") // ec is of type ArrayList<InstructionContext>
-      final ArrayList<InstructionContext> newchain = (ArrayList<InstructionContext>) (ec.clone());
+      final @NonDet ArrayList<InstructionContext> newchain =
+          (ArrayList<InstructionContext>) (ec.clone());
       newchain.add(u);
 
       if ((u.getInstruction().getInstruction()) instanceof RET) {
@@ -267,7 +275,7 @@ public final class StackVer {
       } else { // "not a ret"
 
         // Normal successors. Add them to the queue of successors.
-        final InstructionContext[] succs = u.getSuccessors();
+        final @NonDet InstructionContext @NonDet [] succs = u.getSuccessors();
         for (final InstructionContext v : succs) {
           Frame f = u.getOutFrame(oldchain);
           stack_types.set(v.getInstruction().getPosition(), f);
@@ -283,7 +291,7 @@ public final class StackVer {
 
       // Exception Handlers. Add them to the queue of successors.
       // [subroutines are never protected; mandated by JustIce]
-      final ExceptionHandler[] exc_hds = u.getExceptionHandlers();
+      final @NonDet ExceptionHandler @NonDet [] exc_hds = u.getExceptionHandlers();
       for (final ExceptionHandler exc_hd : exc_hds) {
         final InstructionContext v = cfg.contextOf(exc_hd.getHandlerStart());
         // TODO: the "oldchain" and "newchain" is used to determine the subroutine
@@ -421,7 +429,7 @@ public final class StackVer {
             f.getLocals().set(0, new ObjectType(mg.getClassName()));
           }
         }
-        final Type[] argtypes = mg.getArgumentTypes();
+        final @PolyDet Type @PolyDet [] argtypes = mg.getArgumentTypes();
         int twoslotoffset = 0;
         for (int j = 0; j < argtypes.length; j++) {
           if (argtypes[j] == Type.SHORT
@@ -470,6 +478,7 @@ public final class StackVer {
    *
    * @param message the String containing the warning message
    */
+  @SuppressWarnings("determinism") // adding to a local collection
   public void addMessage(String message) {
     messages.add(message);
   }
